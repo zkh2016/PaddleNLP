@@ -16,7 +16,8 @@ import paddle
 import paddle.nn as nn
 import paddle.tensor as tensor
 import paddle.nn.functional as F
-from paddle.nn import FusedTransformerEncoderLayer, TransformerEncoder, Linear, Layer, Embedding, LayerNorm, Tanh
+from paddle.nn import FusedTransformerEncoderLayer, FusedTransformerEncoder, Linear, Layer, Embedding, LayerNorm, Tanh
+import numpy as np
 
 from .. import PretrainedModel, register_base_model
 
@@ -410,7 +411,7 @@ class BertModel(BertPretrainedModel):
             activation=hidden_act,
             attn_dropout=attention_probs_dropout_prob,
             act_dropout=0)
-        self.encoder = nn.TransformerEncoder(encoder_layer, num_hidden_layers)
+        self.encoder = nn.FusedTransformerEncoder(encoder_layer, num_hidden_layers)
         self.pooler = BertPooler(hidden_size, pool_act)
         self.apply(self.init_weights)
 
@@ -502,13 +503,20 @@ class BertModel(BertPretrainedModel):
             output = embedding_output
             encoder_outputs = []
             for mod in self.encoder.layers:
-                output = mod(output, src_mask=attention_mask)
+                seq_len_host = np.full((output.shape[0], ), output.shape[1], dtype=np.int32)
+                attn_low_window = np.zeros((output.shape[1], ), dtype=np.int32)
+                attn_high_window = np.full((output.shape[1], ), output.shape[1], dtype=np.int32)
+                output = mod(output, paddle.to_tensor(seq_len_host), seq_len_host, attn_low_window, attn_high_window)
                 encoder_outputs.append(output)
             if self.encoder.norm is not None:
                 encoder_outputs[-1] = self.encoder.norm(encoder_outputs[-1])
             pooled_output = self.pooler(encoder_outputs[-1])
         else:
-            sequence_output = self.encoder(embedding_output, attention_mask)
+            seq_len_host = np.full((embedding_output.shape[0], ), embedding_output.shape[1], dtype=np.int32)
+            attn_low_window = np.zeros((embedding_output.shape[1], ), dtype=np.int32)
+            attn_high_window = np.full((embedding_output.shape[1], ), embedding_output.shape[1], dtype=np.int32)
+            #sequence_output = self.encoder(embedding_output, attention_mask)
+            sequence_output = self.encoder(embedding_output, paddle.to_tensor(seq_len_host), seq_len_host, attn_low_window, attn_high_window)
             pooled_output = self.pooler(sequence_output)
         if output_hidden_states:
             return encoder_outputs, pooled_output
