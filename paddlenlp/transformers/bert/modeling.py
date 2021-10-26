@@ -516,7 +516,8 @@ class BertModel(BertPretrainedModel):
             attn_low_window = np.zeros((embedding_output.shape[1], ), dtype=np.int32)
             attn_high_window = np.full((embedding_output.shape[1], ), embedding_output.shape[1], dtype=np.int32)
             #sequence_output = self.encoder(embedding_output, attention_mask)
-            sequence_output = self.encoder(embedding_output, paddle.to_tensor(seq_len_host), seq_len_host, attn_low_window, attn_high_window)
+            sequence_output = self.encoder(embedding_output, paddle.to_tensor(seq_len_host), paddle.to_tensor(seq_len_host, place=paddle.CPUPlace()), 
+                    paddle.to_tensor(attn_low_window, place=paddle.CPUPlace()), paddle.to_tensor(attn_high_window, place=paddle.CPUPlace()))
             pooled_output = self.pooler(sequence_output)
         if output_hidden_states:
             return encoder_outputs, pooled_output
