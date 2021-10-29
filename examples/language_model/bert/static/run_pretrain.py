@@ -289,6 +289,10 @@ def do_train(args):
         masked_lm_labels, next_sentence_labels, masked_lm_scale
     ] = data_holders
 
+    seq_len = paddle.static.data(name='seq_len', shape=[input_ids.shape[0]], dtype = np.int32)
+    attn_low_window = paddle.static.data(name='attn_low_window', shape=[input_ids.shape[1]], dtype = np.int32)
+    attn_high_window = paddle.static.data(name='attn_high_window', shape=[input_ids.shape[1]], dtype = np.int32)
+
     # Define the model structure in static mode
     args.model_type = args.model_type.lower()
     model_class, tokenizer_class = MODEL_CLASSES[args.model_type]
@@ -300,6 +304,9 @@ def do_train(args):
     criterion = BertPretrainingCriterion(model.bert.config["vocab_size"])
     prediction_scores, seq_relationship_score = model(
         input_ids=input_ids,
+        seq_len=seq_len,
+        attn_low_window=attn_low_window,
+        attn_high_window=attn_high_window,
         token_type_ids=segment_ids,
         attention_mask=input_mask,
         masked_positions=masked_lm_positions)
@@ -377,6 +384,13 @@ def do_train(args):
             total_samples = 0
             batch_start = time.time()
             for step, batch in enumerate(train_data_loader):
+                input_ids = batch[0]["input_ids"]
+                seq_len = np.full((input_ids.shape()[0], ), input_ids.shape()[1], np.int32)
+                attn_low_window = np.zeros((input_ids.shape()[1], ), np.int32)
+                attn_high_window = np.full((input_ids.shape()[1], ), input_ids.shape()[1], np.int32)
+                batch[0]["seq_len"] = seq_len 
+                batch[0]["attn_low_window"] = attn_low_window 
+                batch[0]["attn_high_window"] = attn_high_window 
                 train_reader_cost = time.time() - batch_start
                 reader_cost_avg.record(train_reader_cost)
                 global_step += 1

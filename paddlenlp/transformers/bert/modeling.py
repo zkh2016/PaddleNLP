@@ -417,6 +417,9 @@ class BertModel(BertPretrainedModel):
 
     def forward(self,
                 input_ids,
+                seq_len,
+                attn_low_window,
+                attn_high_window,
                 token_type_ids=None,
                 position_ids=None,
                 attention_mask=None,
@@ -503,21 +506,14 @@ class BertModel(BertPretrainedModel):
             output = embedding_output
             encoder_outputs = []
             for mod in self.encoder.layers:
-                seq_len_host = np.full((output.shape[0], ), output.shape[1], dtype=np.int32)
-                attn_low_window = np.zeros((output.shape[1], ), dtype=np.int32)
-                attn_high_window = np.full((output.shape[1], ), output.shape[1], dtype=np.int32)
-                output = mod(output, paddle.to_tensor(seq_len_host), seq_len_host, attn_low_window, attn_high_window)
+                output = mod(output, seq_len, seq_len, attn_low_window, attn_high_window)
                 encoder_outputs.append(output)
             if self.encoder.norm is not None:
                 encoder_outputs[-1] = self.encoder.norm(encoder_outputs[-1])
             pooled_output = self.pooler(encoder_outputs[-1])
         else:
-            seq_len_host = np.full((embedding_output.shape[0], ), embedding_output.shape[1], dtype=np.int32)
-            attn_low_window = np.zeros((embedding_output.shape[1], ), dtype=np.int32)
-            attn_high_window = np.full((embedding_output.shape[1], ), embedding_output.shape[1], dtype=np.int32)
-            #sequence_output = self.encoder(embedding_output, attention_mask)
-            sequence_output = self.encoder(embedding_output, paddle.to_tensor(seq_len_host), paddle.to_tensor(seq_len_host, place=paddle.CPUPlace()), 
-                    paddle.to_tensor(attn_low_window, place=paddle.CPUPlace()), paddle.to_tensor(attn_high_window, place=paddle.CPUPlace()))
+            sequence_output = self.encoder(embedding_output, seq_len, seq_len, 
+                    attn_low_window, attn_high_window) 
             pooled_output = self.pooler(sequence_output)
         if output_hidden_states:
             return encoder_outputs, pooled_output
@@ -877,6 +873,9 @@ class BertForPretraining(BertPretrainedModel):
 
     def forward(self,
                 input_ids,
+                seq_len,
+                attn_low_window,
+                attn_high_window,
                 token_type_ids=None,
                 position_ids=None,
                 attention_mask=None,
@@ -913,6 +912,9 @@ class BertForPretraining(BertPretrainedModel):
         with paddle.static.amp.fp16_guard():
             outputs = self.bert(
                 input_ids,
+                seq_len,
+                attn_low_window,
+                attn_high_window,
                 token_type_ids=token_type_ids,
                 position_ids=position_ids,
                 attention_mask=attention_mask)
