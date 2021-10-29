@@ -404,6 +404,7 @@ class BertModel(BertPretrainedModel):
             vocab_size, hidden_size, hidden_dropout_prob,
             max_position_embeddings, type_vocab_size)
         encoder_layer = nn.FusedTransformerEncoderLayer(
+        #encoder_layer = nn.TransformerEncoderLayer(
             hidden_size,
             num_attention_heads,
             intermediate_size,
@@ -412,6 +413,7 @@ class BertModel(BertPretrainedModel):
             attn_dropout=attention_probs_dropout_prob,
             act_dropout=0)
         self.encoder = nn.FusedTransformerEncoder(encoder_layer, num_hidden_layers)
+        #self.encoder = nn.TransformerEncoder(encoder_layer, num_hidden_layers)
         self.pooler = BertPooler(hidden_size, pool_act)
         self.apply(self.init_weights)
 
@@ -514,7 +516,8 @@ class BertModel(BertPretrainedModel):
         else:
             sequence_output = self.encoder(embedding_output, seq_len, seq_len, 
                     attn_low_window, attn_high_window) 
-            pooled_output = self.pooler(sequence_output)
+            #sequence_output = self.encoder(embedding_output, attention_mask) 
+            #pooled_output = self.pooler(sequence_output)
         if output_hidden_states:
             return encoder_outputs, pooled_output
         else:
