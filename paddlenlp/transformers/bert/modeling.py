@@ -517,7 +517,7 @@ class BertModel(BertPretrainedModel):
             sequence_output = self.encoder(embedding_output, seq_len, seq_len, 
                     attn_low_window, attn_high_window) 
             #sequence_output = self.encoder(embedding_output, attention_mask) 
-            #pooled_output = self.pooler(sequence_output)
+            pooled_output = self.pooler(sequence_output)
         if output_hidden_states:
             return encoder_outputs, pooled_output
         else:
