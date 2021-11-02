@@ -16,7 +16,9 @@ import paddle
 import paddle.nn as nn
 import paddle.tensor as tensor
 import paddle.nn.functional as F
-from paddle.nn import FusedTransformerEncoderLayer, FusedTransformerEncoder, Linear, Layer, Embedding, LayerNorm, Tanh
+import paddle.incubate.nn.functional as incubate_F
+from paddle.incubate.nn import FusedTransformerEncoderLayer, FusedTransformerEncoder
+from paddle.nn import Linear, Layer, Embedding, LayerNorm, Tanh
 import numpy as np
 
 from .. import PretrainedModel, register_base_model
@@ -403,16 +405,16 @@ class BertModel(BertPretrainedModel):
         self.embeddings = BertEmbeddings(
             vocab_size, hidden_size, hidden_dropout_prob,
             max_position_embeddings, type_vocab_size)
-        encoder_layer = nn.FusedTransformerEncoderLayer(
+        encoder_layer = FusedTransformerEncoderLayer(
         #encoder_layer = nn.TransformerEncoderLayer(
             hidden_size,
             num_attention_heads,
             intermediate_size,
-            dropout=hidden_dropout_prob,
+            dropout_rate=hidden_dropout_prob,
             activation=hidden_act,
-            attn_dropout=attention_probs_dropout_prob,
-            act_dropout=0)
-        self.encoder = nn.FusedTransformerEncoder(encoder_layer, num_hidden_layers)
+            attn_dropout_rate=attention_probs_dropout_prob,
+            act_dropout_rate=0)
+        self.encoder = FusedTransformerEncoder(encoder_layer, num_hidden_layers)
         #self.encoder = nn.TransformerEncoder(encoder_layer, num_hidden_layers)
         self.pooler = BertPooler(hidden_size, pool_act)
         self.apply(self.init_weights)
